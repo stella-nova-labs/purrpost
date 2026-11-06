@@ -65,7 +65,7 @@ class S3Storage:
         self.ttl = settings.presign_ttl_sec
         self.s3 = boto3.client("s3", endpoint_url=settings.s3_endpoint or None, region_name=settings.s3_region,
                                aws_access_key_id=settings.s3_access_key, aws_secret_access_key=settings.s3_secret_key,
-                               config=Config(signature_version="s3v4", s3={"addressing_style": "virtual"}))
+                               config=Config(signature_version="s3v4", s3={"addressing_style": settings.s3_url_style}))
 
     async def put(self, key: str, data: bytes, content_type: str) -> None:
         await asyncio.to_thread(self.s3.put_object, Bucket=self.bucket, Key=key, Body=data, ContentType=content_type)

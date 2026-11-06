@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     s3_access_key: str = ""
     s3_secret_key: str = ""
     s3_region: str = "auto"
+    s3_url_style: Literal["virtual", "path"] = "virtual"  # Railway shows it in the bucket's credentials
     s3_public_base_url: str = ""  # if the bucket is public; otherwise presigned URLs are used
     presign_ttl_sec: int = 3600
     media_dir: str = str(BACKEND_DIR / "data" / "media")  # local storage when S3 is not configured
