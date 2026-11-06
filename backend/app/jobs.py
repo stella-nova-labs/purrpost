@@ -6,10 +6,14 @@ import asyncio
 import logging
 
 from .context import Ctx
+from .services import characters, queue
 
 log = logging.getLogger("purrpost.jobs")
 
-STEPS: list = []  # filled in by later phases: (name, coroutine function taking ctx)
+STEPS: list = [
+    ("queue", queue.process),
+    ("trainings", characters.poll_trainings),
+]
 
 
 async def tick(ctx: Ctx) -> dict:

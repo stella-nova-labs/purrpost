@@ -75,3 +75,69 @@ export const adminPatchUser = (id: number, body: { budget_usd?: number; is_activ
   api<{ ok: boolean }>(`/api/admin/users/${id}`, { method: 'PATCH', body })
 export const getKeys = () => api<Keys>('/api/me/keys')
 export const putKeys = (body: { fal?: string; anthropic?: string }) => api<Keys>('/api/me/keys', { method: 'PUT', body })
+
+// ---- characters ----
+export type Rubric = { weekday: number | null; title: string; description: string }
+export type Appearance = { breed: string; color: string; marks: string; signature: string }
+export type CardData = {
+  name: string
+  handle: string
+  personality: string
+  pain: string
+  humor: string
+  language: string
+  appearance: Appearance
+  rubrics: Rubric[]
+  stop_topics: string[]
+  notes: string
+}
+export type CharStatus = 'appearance' | 'refsheet' | 'training' | 'testing' | 'ready'
+export type CharImage = { id: number; kind: string; url: string; batch: number }
+export type Schedule = { times: string[]; days: number[]; tz: string; lead_hours: number }
+export type CharacterBrief = {
+  id: number
+  name: string
+  handle: string
+  status: CharStatus
+  template: string | null
+  autopilot: boolean
+  approved_streak: number
+  avatar: string | null
+}
+export type Character = CharacterBrief & {
+  card: CardData
+  appearance_text: string
+  chosen_image_id: number | null
+  lora_trigger: string
+  has_lora: boolean
+  training_error: string | null
+  candidates: CharImage[]
+  refs: CharImage[]
+  tests: CharImage[]
+  busy: string[]
+  min_refs: number
+  last_job: { kind: string; status: string; error: string | null } | null
+  schedule: Schedule
+  slides_max: number
+  ai_disclosure: boolean
+  disclosure_text: string
+  trend: string
+  lore: { date: string; rubric: string; summary: string }[]
+}
+export type Template = { slug: string; name: string; handle: string; personality: string; notes: string }
+
+export const getTemplates = () => api<Template[]>('/api/templates')
+export const suggestCard = (idea: string) => api<CardData>('/api/characters/suggest', { body: { idea } })
+export const listCharacters = () => api<CharacterBrief[]>('/api/characters')
+export const getCharacter = (id: number) => api<Character>(`/api/characters/${id}`)
+export const createCharacter = (card: CardData) => api<Character>('/api/characters', { body: card })
+export const fromTemplate = (slug: string) => api<Character>(`/api/characters/from-template/${slug}`, { method: 'POST' })
+export const putCard = (id: number, card: CardData) => api<Character>(`/api/characters/${id}/card`, { method: 'PUT', body: card })
+export const requestCandidates = (id: number, count: number, extra: string) =>
+  api<Character>(`/api/characters/${id}/candidates`, { body: { count, extra } })
+export const chooseCandidate = (id: number, image_id: number) => api<Character>(`/api/characters/${id}/choose`, { body: { image_id } })
+export const requestRefsheet = (id: number, count = 16) => api<Character>(`/api/characters/${id}/refsheet`, { body: { count } })
+export const deleteImage = (id: number, imageId: number) => api<Character>(`/api/characters/${id}/images/${imageId}`, { method: 'DELETE' })
+export const startTraining = (id: number) => api<Character>(`/api/characters/${id}/train`, { method: 'POST' })
+export const confirmLora = (id: number, ok: boolean) => api<Character>(`/api/characters/${id}/confirm`, { body: { ok } })
+export const archiveCharacter = (id: number) => api<{ ok: boolean }>(`/api/characters/${id}`, { method: 'DELETE' })

@@ -80,7 +80,7 @@ def draw_cat(prompt: str, width: int, height: int, variant: str = "") -> bytes:
     floor_y = int(h * rng.uniform(0.74, 0.8))
     d.rectangle([0, floor_y, w, h], fill=tuple(max(0, v - 25) for v in bg_bottom))
 
-    s = w / 540 * rng.uniform(0.85, 1.1)  # scale
+    s = min(w / 540, h / 690) * rng.uniform(0.85, 1.05)  # scale: fits both square and 4:5 frames
     cx = w / 2 + rng.uniform(-0.12, 0.12) * w
     dark = tuple(max(0, v - 40) for v in fur)
     # tail
@@ -205,7 +205,13 @@ def _canned(task: str, content: list[dict]) -> dict:
         return {"ok": True, "anatomy_ok": True, "matches_reference": True, "text_artifacts": False,
                 "logos_or_known_characters": False, "issues": [], "score": 0.92}
     if task == "appearance_text":
-        return {"appearance_text": "a ginger tabby British Shorthair cat with a white chest and green eyes"}
+        try:
+            a = json.loads(_between(text.replace("<user_data name=\"appearance_notes\">", "<notes>")
+                                    .replace("</user_data>", "</notes>"), "notes"))
+        except ValueError:
+            a = {}
+        desc = ", ".join(v for v in (a.get("breed"), a.get("color"), a.get("marks"), a.get("signature")) if v)
+        return {"appearance_text": f"a {desc or 'ginger tabby cat with a white chest and green eyes'}"}
     return {}
 
 

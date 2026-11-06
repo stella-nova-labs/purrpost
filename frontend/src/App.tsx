@@ -8,14 +8,16 @@ import { t } from './i18n'
 import { getMe } from './lib/api'
 import { initTelegram } from './lib/telegram'
 import { AdminScreen } from './screens/AdminScreen'
+import { CharactersScreen } from './screens/CharactersScreen'
 import { InviteGate } from './screens/InviteGate'
 import { KeysScreen } from './screens/KeysScreen'
 import { Placeholder } from './screens/Placeholder'
 import { ProfileScreen } from './screens/ProfileScreen'
+import { WizardScreen } from './screens/WizardScreen'
 import { useNav, type Route, type Tab } from './store/nav'
 
 const TAB_SCREENS: Record<Tab, () => ReactNode> = {
-  characters: () => <Placeholder title="tab.characters" />,
+  characters: () => <CharactersScreen />,
   drafts: () => <Placeholder title="tab.drafts" />,
   calendar: () => <Placeholder title="tab.calendar" />,
   dashboard: () => <Placeholder title="tab.dashboard" />,
@@ -28,6 +30,8 @@ function routeScreen(r: Route): ReactNode {
       return <AdminScreen />
     case 'keys':
       return <KeysScreen />
+    case 'wizard':
+      return <WizardScreen key={r.id ?? 'new'} id={r.id} />
     default:
       return <Placeholder title="common.soon" />
   }

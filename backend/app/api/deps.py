@@ -77,3 +77,10 @@ def get_admin(u: ActiveUser, settings: SettingsDep) -> User:
 
 
 AdminUser = Annotated[User, Depends(get_admin)]
+
+
+def get_ctx(request: Request):
+    return request.app.state.ctx
+
+
+CtxDep = Annotated[object, Depends(get_ctx)]

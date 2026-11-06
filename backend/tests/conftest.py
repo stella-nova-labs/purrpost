@@ -54,3 +54,25 @@ async def invite_user(client, uid: int) -> None:
     assert r.status_code == 200, r.text
     r = await client.post("/api/invite/redeem", json={"code": r.json()["code"]}, headers=auth(uid))
     assert r.status_code == 200, r.text
+
+
+async def run_jobs(ctx, rounds: int = 5) -> None:
+    """What the worker does: process the queue and poll trainings until nothing is left."""
+    from app import jobs
+    for _ in range(rounds):
+        await jobs.tick(ctx)
+
+
+async def ready_character(client, ctx, uid: int, slug: str = "don-whiskers") -> dict:
+    """Create a character from a template and walk it through the whole wizard (fake providers)."""
+    ch = (await client.post(f"/api/characters/from-template/{slug}", headers=auth(uid))).json()
+    await run_jobs(ctx)
+    ch = (await client.get(f"/api/characters/{ch['id']}", headers=auth(uid))).json()
+    ch = (await client.post(f"/api/characters/{ch['id']}/choose", json={"image_id": ch["candidates"][0]["id"]},
+                            headers=auth(uid))).json()
+    await run_jobs(ctx)
+    assert (await client.post(f"/api/characters/{ch['id']}/train", headers=auth(uid))).status_code == 200
+    await run_jobs(ctx)
+    r = await client.post(f"/api/characters/{ch['id']}/confirm", json={"ok": True}, headers=auth(uid))
+    assert r.status_code == 200, r.text
+    return r.json()
