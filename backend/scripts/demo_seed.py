@@ -21,6 +21,7 @@ from sqlalchemy import select, text
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app import jobs  # noqa: E402
+from app.services import characters, queue  # noqa: E402
 from app.config import get_settings  # noqa: E402
 from app.db import Database  # noqa: E402
 from app.main import build_ctx, create_app  # noqa: E402
@@ -128,12 +129,32 @@ async def main() -> None:
         # a friend on an invite with a cat of their own
         code = (await c.post("/api/admin/invites", json={"max_uses": 3, "note": "friends"}, headers=h(OWNER))).json()["code"]
         await c.post("/api/invite/redeem", json={"code": code}, headers=h(FRIEND))
-        card = (await c.post("/api/characters/suggest", json={"idea": "a sleepy space cat who runs a bakery on Mars"},
-                             headers=h(FRIEND))).json()
-        card.update({"name": "Biscuit", "handle": "biscuit.on.mars"})
-        cb = (await c.post("/api/characters", json=card, headers=h(FRIEND))).json()
-        await c.post(f"/api/characters/{cb['id']}/candidates", json={"count": 8, "extra": ""}, headers=h(FRIEND))
-        await tick(ctx, 2)
+        # the friend's cats, one at each wizard step (for screenshots)
+        stages = [("Biscuit", "biscuit.on.mars", "a sleepy cream cat who runs a bakery on Mars", "candidates"),
+                  ("Mochi", "mochi.naps", "a fluffy white cat who reviews cushions", "refsheet"),
+                  ("Nori", "nori.sushi.cat", "a black cat sushi chef in Tokyo", "testing"),
+                  # last: polling trainings (for Nori) would finish every training in progress
+                  ("Pixel", "pixel.purrs", "a ginger cat who fixes old computers", "training")]
+        for name, handle, idea, stage in stages:
+            card = (await c.post("/api/characters/suggest", json={"idea": idea}, headers=h(FRIEND))).json()
+            card.update({"name": name, "handle": handle})
+            card["appearance"]["color"] = idea.split(" cat")[0].split()[-1]
+            cb = (await c.post("/api/characters", json=card, headers=h(FRIEND))).json()
+            await c.post(f"/api/characters/{cb['id']}/candidates", json={"count": 8, "extra": ""}, headers=h(FRIEND))
+            await queue.process(ctx)
+            if stage == "candidates":
+                continue
+            cb = (await c.get(f"/api/characters/{cb['id']}", headers=h(FRIEND))).json()
+            await c.post(f"/api/characters/{cb['id']}/choose", json={"image_id": cb["candidates"][2]["id"]}, headers=h(FRIEND))
+            await queue.process(ctx)
+            if stage == "refsheet":
+                continue
+            await c.post(f"/api/characters/{cb['id']}/train", headers=h(FRIEND))
+            await queue.process(ctx)  # training submitted, not polled: stays "training"
+            if stage == "training":
+                continue
+            await characters.poll_trainings(ctx)
+            await queue.process(ctx)
         await c.post("/api/admin/invites", json={"max_uses": 1, "note": "for Sasha"}, headers=h(OWNER))
         print(f"done: don={don['id']} tilted={tilted['id']} review={d1['id']},{d2['id']} invite={code}")
     await ctx.http.aclose()

@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 
@@ -14,9 +15,13 @@ BOT_TOKEN = "123456:TEST-TOKEN"
 OWNER = 1
 
 
+# SQLite by default; TEST_DATABASE_URL=postgresql://… runs the same suite on PostgreSQL (tables are recreated)
+TEST_DB = os.environ.get("TEST_DATABASE_URL")
+
+
 @pytest.fixture
 def settings(tmp_path):
-    return Settings(database_url=f"sqlite+aiosqlite:///{tmp_path / 't.db'}", dev_auth=True, bot_token=BOT_TOKEN,
+    return Settings(database_url=TEST_DB or f"sqlite+aiosqlite:///{tmp_path / 't.db'}", dev_auth=True, bot_token=BOT_TOKEN,
                     owner_id=OWNER, dev_fake_providers=True, media_dir=str(tmp_path / "media"),
                     encryption_key="", webapp_url="https://purrpost.test")
 
@@ -25,6 +30,10 @@ def settings(tmp_path):
 async def app(settings):
     a = create_app(settings)
     db = Database(settings.db_url)
+    if TEST_DB:
+        from app.db import Base
+        async with db.engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
     await db.create_schema()
     a.state.db = db
     a.state.bot_username = "purrpost_test_bot"
