@@ -11,11 +11,11 @@ import { AdminScreen } from './screens/AdminScreen'
 import { CalendarScreen } from './screens/CalendarScreen'
 import { CharacterScreen } from './screens/CharacterScreen'
 import { CharactersScreen } from './screens/CharactersScreen'
+import { DashboardScreen } from './screens/DashboardScreen'
 import { DraftScreen } from './screens/DraftScreen'
 import { DraftsScreen } from './screens/DraftsScreen'
 import { InviteGate } from './screens/InviteGate'
 import { KeysScreen } from './screens/KeysScreen'
-import { Placeholder } from './screens/Placeholder'
 import { ProfileScreen } from './screens/ProfileScreen'
 import { WizardScreen } from './screens/WizardScreen'
 import { useNav, type Route, type Tab } from './store/nav'
@@ -24,7 +24,7 @@ const TAB_SCREENS: Record<Tab, () => ReactNode> = {
   characters: () => <CharactersScreen />,
   drafts: () => <DraftsScreen />,
   calendar: () => <CalendarScreen />,
-  dashboard: () => <Placeholder title="tab.dashboard" />,
+  dashboard: () => <DashboardScreen />,
   profile: () => <ProfileScreen />,
 }
 
@@ -40,8 +40,6 @@ function routeScreen(r: Route): ReactNode {
       return <DraftScreen key={r.id} id={r.id} />
     case 'wizard':
       return <WizardScreen key={r.id ?? 'new'} id={r.id} />
-    default:
-      return <Placeholder title="common.soon" />
   }
 }
 

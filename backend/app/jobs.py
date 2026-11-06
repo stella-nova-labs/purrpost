@@ -6,7 +6,7 @@ import asyncio
 import logging
 
 from .context import Ctx
-from .services import characters, pipeline, publishing, queue, schedule  # noqa: F401 (pipeline registers handlers)
+from .services import characters, metrics, pipeline, publishing, queue, schedule  # noqa: F401 (pipeline registers handlers)
 
 log = logging.getLogger("purrpost.jobs")
 
@@ -17,6 +17,8 @@ STEPS: list = [
     ("publish_due", publishing.start_due),
     ("publish", publishing.process),
     ("tokens", publishing.refresh_tokens),
+    ("metrics", metrics.collect),
+    ("followers", metrics.account_stats),
 ]
 
 

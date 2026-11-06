@@ -1,14 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
-import { Badge, Button, Card, Field, Input, ScreenTitle, Section } from '../components/ui'
+import { Badge, Button, Card, Field, Input, ScreenTitle, Section, Toggle } from '../components/ui'
 import { t } from '../i18n'
-import { adminDisableInvite, adminInvites, adminNewInvite, adminPatchUser, adminUsers } from '../lib/api'
+import { adminAutopilot, adminDisableInvite, adminInvites, adminNewInvite, adminOverview, adminPatchUser, adminUsers } from '../lib/api'
 
 export function AdminScreen() {
   const qc = useQueryClient()
   const invites = useQuery({ queryKey: ['admin', 'invites'], queryFn: adminInvites })
   const users = useQuery({ queryKey: ['admin', 'users'], queryFn: adminUsers })
+  const overview = useQuery({ queryKey: ['admin', 'overview'], queryFn: adminOverview })
+  const auto = useMutation({ mutationFn: ({ id, on }: { id: number; on: boolean }) => adminAutopilot(id, on), onSuccess: () => qc.invalidateQueries({ queryKey: ['admin'] }) })
+  const charsOf = (uid: number) => overview.data?.users.find((u) => u.id === uid)?.characters ?? 0
   const [maxUses, setMaxUses] = useState('1')
   const [note, setNote] = useState('')
   const refresh = () => qc.invalidateQueries({ queryKey: ['admin'] })
@@ -67,7 +70,7 @@ export function AdminScreen() {
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <span className="truncate text-[15px] font-bold">{u.username ? `@${u.username}` : u.first_name || u.id}</span>
               <span className="text-[12px] text-muted">
-                {u.is_active ? t('admin.active') : t('admin.inactive')} · ${u.spent_usd.toFixed(2)}
+                {u.is_active ? t('admin.active') : t('admin.inactive')} · ${u.spent_usd.toFixed(2)} · {t('admin.charsOf', { n: charsOf(u.id) })}
                 {u.own_keys ? ` · ${t('admin.ownKeys')}` : ''}
               </span>
             </div>
@@ -86,6 +89,20 @@ export function AdminScreen() {
           </Card>
         ))}
       </Section>
+      {overview.data && (
+        <Section title={t('admin.characters')} right={<span className="text-[12px] text-muted">{t('admin.totalSpent', { v: overview.data.total_spent_usd.toFixed(2) })}</span>}>
+          {overview.data.characters.map((c) => (
+            <Card key={c.id} className="flex flex-col gap-1 p-3.5">
+              <Toggle
+                on={c.autopilot}
+                onChange={(on) => auto.mutate({ id: c.id, on })}
+                label={`${c.name} · @${c.handle}`}
+                hint={`${overview.data.users.find((u) => u.id === c.user_id)?.name ?? c.user_id} · ${t(`status.${c.status}`)} · ${t('admin.posts', { n: c.posts })} · ${c.approved_streak}/10`}
+              />
+            </Card>
+          ))}
+        </Section>
+      )}
     </div>
   )
 }

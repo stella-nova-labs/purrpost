@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from ..models import Character, CharacterImage
+from ..services import autopilot
 from ..services import characters as svc
 from ..services.queue import busy, kick, last_error
 from ..services.templates import TEMPLATES
@@ -55,6 +56,7 @@ async def character_out(ctx, s, ch: Character, full: bool = True) -> dict:
         "last_job": {"kind": last.kind, "status": last.status, "error": last.error} if last else None,
         "schedule": ch.schedule, "slides_max": ch.slides_max, "ai_disclosure": ch.ai_disclosure,
         "disclosure_text": ch.disclosure_text, "trend": ch.trend, "lore": ch.lore[-5:],
+        "autopilot_streak": ctx.settings.autopilot_streak, "autopilot_unlocked": autopilot.unlocked(ctx, ch),
     })
     return out
 

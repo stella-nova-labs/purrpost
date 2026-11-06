@@ -67,6 +67,7 @@ class SettingsIn(BaseModel):
     ai_disclosure: bool | None = None
     disclosure_text: str | None = Field(None, max_length=80)
     trend: str | None = Field(None, max_length=500)
+    autopilot: bool | None = None
 
 
 @router.patch("/characters/{cid}/settings")
@@ -86,6 +87,13 @@ async def patch_settings(cid: int, body: SettingsIn, u: ActiveUser, s: Session, 
         v = getattr(body, f)
         if v is not None:
             setattr(ch, f, v)
+    if body.autopilot is not None:
+        from ..services import autopilot
+        from ..services.approval import ActionError
+        try:
+            await autopilot.set_autopilot(ctx, s, ch, body.autopilot, by_owner=u.id in ctx.settings.admin_id_set)
+        except ActionError as e:
+            raise HTTPException(400, e.code) from e
     await s.commit()
     return await character_out(ctx, s, ch)
 

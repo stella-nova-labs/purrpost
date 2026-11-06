@@ -230,3 +230,34 @@ class Publication(Base):
     permalink: Mapped[str | None] = mapped_column(Text)
     published_ms: Mapped[int | None] = mapped_column(BigInteger)
     created_ms: Mapped[int] = mapped_column(BigInteger, default=0)
+
+
+class Metric(Base):
+    """Post metrics taken 24 hours and 7 days after publishing."""
+
+    __tablename__ = "metrics"
+    __table_args__ = (UniqueConstraint("publication_id", "kind", name="uq_metric"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    publication_id: Mapped[int] = mapped_column(ForeignKey("publications.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(4))  # 24h | 7d
+    likes: Mapped[int | None] = mapped_column(Integer)
+    comments: Mapped[int | None] = mapped_column(Integer)
+    reach: Mapped[int | None] = mapped_column(Integer)
+    saves: Mapped[int | None] = mapped_column(Integer)
+    views: Mapped[int | None] = mapped_column(Integer)
+    data: Mapped[dict] = mapped_column(JSON, default=dict)
+    fetched_ms: Mapped[int] = mapped_column(BigInteger, default=0)
+
+
+class AccountStat(Base):
+    """Followers once a day, for the growth chart."""
+
+    __tablename__ = "account_stats"
+    __table_args__ = (UniqueConstraint("account_id", "day", name="uq_account_day"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"), index=True)
+    day: Mapped[str] = mapped_column(String(10))  # YYYY-MM-DD
+    followers: Mapped[int | None] = mapped_column(Integer)
+    fetched_ms: Mapped[int] = mapped_column(BigInteger, default=0)

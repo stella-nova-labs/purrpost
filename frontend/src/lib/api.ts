@@ -123,6 +123,8 @@ export type Character = CharacterBrief & {
   disclosure_text: string
   trend: string
   lore: { date: string; rubric: string; summary: string }[]
+  autopilot_streak: number
+  autopilot_unlocked: boolean
 }
 export type Template = { slug: string; name: string; handle: string; personality: string; notes: string }
 
@@ -181,6 +183,7 @@ export type SettingsPatch = {
   ai_disclosure?: boolean
   disclosure_text?: string
   trend?: string
+  autopilot?: boolean
 }
 
 export const listDrafts = (params: { status?: string; character_id?: number; from_ms?: number; to_ms?: number } = {}) => {
@@ -226,3 +229,41 @@ export const oauthStart = (platform: 'instagram' | 'threads', cid: number) =>
   api<{ url: string }>(`/api/oauth/${platform}/start?character_id=${cid}`)
 export const connectTelegram = (cid: number, channel: string) => api<Account>(`/api/characters/${cid}/accounts/telegram`, { body: { channel } })
 export const disconnectAccount = (id: number) => api<{ ok: boolean }>(`/api/accounts/${id}`, { method: 'DELETE' })
+
+// ---- dashboard ----
+export type PostMetrics = { likes: number; comments: number; reach: number; saves: number; views: number }
+export type Dashboard = {
+  characters: { id: number; name: string; autopilot: boolean; approved_streak: number; spend_month: number }[]
+  totals: {
+    followers: Partial<Record<Platform, number>>
+    posts_month: number
+    posts: number
+    avg_reach: number | null
+    avg_likes: number | null
+    spend_month: number
+  }
+  followers_series: { day: string; followers: number }[]
+  posts: {
+    id: number
+    character: string
+    character_id: number
+    published_ms: number
+    rubric: string
+    idea: string
+    thumb: string | null
+    platforms: Partial<Record<Platform, string | null>>
+    metrics: PostMetrics | null
+    window: '24h' | '7d' | null
+  }[]
+  rubrics: { rubric: string; posts: number; avg_reach: number; avg_likes: number }[]
+  budget: Budget
+}
+export const getDashboard = (character_id?: number) => api<Dashboard>(`/api/dashboard${character_id ? `?character_id=${character_id}` : ''}`)
+
+export type Overview = {
+  users: { id: number; name: string; is_active: boolean; budget_usd: number; spent_usd: number; spent_own_usd: number; characters: number }[]
+  characters: { id: number; user_id: number; name: string; handle: string; status: CharStatus; autopilot: boolean; approved_streak: number; posts: number }[]
+  total_spent_usd: number
+}
+export const adminOverview = () => api<Overview>('/api/admin/overview')
+export const adminAutopilot = (id: number, autopilot: boolean) => api<{ id: number; autopilot: boolean }>(`/api/admin/characters/${id}`, { method: 'PATCH', body: { autopilot } })

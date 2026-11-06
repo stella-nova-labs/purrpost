@@ -130,6 +130,30 @@ function PostingCard({ ch }: { ch: Character }) {
   )
 }
 
+function AutopilotCard({ ch }: { ch: Character }) {
+  const save = useSettings(ch)
+  return (
+    <Card className="flex flex-col gap-2 p-4">
+      <Toggle
+        on={ch.autopilot}
+        disabled={!ch.autopilot_unlocked || save.isPending}
+        onChange={(v) => save.mutate({ autopilot: v })}
+        label={t('auto.title')}
+        hint={t('auto.hint')}
+      />
+      {!ch.autopilot_unlocked && (
+        <>
+          <div className="h-1.5 overflow-hidden rounded bg-line">
+            <div className="h-full rounded bg-accent" style={{ width: `${(ch.approved_streak / ch.autopilot_streak) * 100}%` }} />
+          </div>
+          <span className="text-[12px] text-muted">{t('auto.locked', { n: ch.autopilot_streak, streak: ch.approved_streak })}</span>
+        </>
+      )}
+      {save.isError && <ErrorNote text={errorText(errCode(save.error))} />}
+    </Card>
+  )
+}
+
 function GenerateCard({ ch }: { ch: Character }) {
   const qc = useQueryClient()
   const [trend, setTrend] = useState(ch.trend)
@@ -182,6 +206,7 @@ export function CharacterScreen({ id }: { id: number }) {
         </div>
       </Card>
       <GenerateCard ch={ch} />
+      <AutopilotCard ch={ch} />
       <Section title={t('acc.title')}>
         <AccountsCard cid={ch.id} />
       </Section>

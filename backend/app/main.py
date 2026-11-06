@@ -13,6 +13,7 @@ from . import jobs
 from .api.accounts import router as accounts_router
 from .api.admin import router as admin_router
 from .api.characters import router as characters_router
+from .api.dashboard import router as dashboard_router
 from .api.drafts import router as drafts_router
 from .api.keys import router as keys_router
 from .api.me import router as me_router
@@ -27,7 +28,7 @@ log = logging.getLogger("purrpost")
 STATIC_CANDIDATES = [Path(__file__).resolve().parent.parent / "static",
                      Path(__file__).resolve().parents[2] / "frontend" / "dist"]
 
-ROUTERS = [me_router, keys_router, characters_router, drafts_router, accounts_router, admin_router, media_router]
+ROUTERS = [me_router, keys_router, characters_router, drafts_router, accounts_router, dashboard_router, admin_router, media_router]
 
 
 def build_ctx(settings: Settings, db: Database, bot=None) -> Ctx:
