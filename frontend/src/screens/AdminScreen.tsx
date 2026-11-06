@@ -66,7 +66,10 @@ export function AdminScreen() {
           <Card key={u.id} className="flex items-center gap-3 p-3.5">
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <span className="truncate text-[15px] font-bold">{u.username ? `@${u.username}` : u.first_name || u.id}</span>
-              <span className="text-[12px] text-muted">{u.is_active ? t('admin.active') : t('admin.inactive')}</span>
+              <span className="text-[12px] text-muted">
+                {u.is_active ? t('admin.active') : t('admin.inactive')} · ${u.spent_usd.toFixed(2)}
+                {u.own_keys ? ` · ${t('admin.ownKeys')}` : ''}
+              </span>
             </div>
             <label className="flex items-center gap-1.5 text-[12px] text-muted">
               $

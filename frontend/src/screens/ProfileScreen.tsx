@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
+import { BudgetCard } from '../components/BudgetCard'
 import { Icon } from '../components/icons'
 import { Card, ScreenTitle } from '../components/ui'
 import { t } from '../i18n'
@@ -14,6 +15,15 @@ export function ProfileScreen() {
     <div className="flex flex-col gap-4">
       <ScreenTitle title={t('profile.title')} subtitle={u?.username ? `@${u.username}` : u?.first_name} />
       {me.data?.fake_providers && <Card className="p-3.5 text-[13px] text-warn">{t('profile.fake')}</Card>}
+      {me.data?.budget && <BudgetCard b={me.data.budget} />}
+      <Card onClick={() => push({ name: 'keys' })} className="flex items-center gap-3 p-4">
+        <Icon name="wallet" />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="font-bold">{t('profile.keys')}</span>
+          <span className="text-[12px] text-muted">{t('profile.keysHint')}</span>
+        </div>
+        <Icon name="next" size={18} />
+      </Card>
       {u?.is_admin && (
         <Card onClick={() => push({ name: 'admin' })} className="flex items-center gap-3 p-4">
           <Icon name="key" />

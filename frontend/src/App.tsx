@@ -9,6 +9,7 @@ import { getMe } from './lib/api'
 import { initTelegram } from './lib/telegram'
 import { AdminScreen } from './screens/AdminScreen'
 import { InviteGate } from './screens/InviteGate'
+import { KeysScreen } from './screens/KeysScreen'
 import { Placeholder } from './screens/Placeholder'
 import { ProfileScreen } from './screens/ProfileScreen'
 import { useNav, type Route, type Tab } from './store/nav'
@@ -25,6 +26,8 @@ function routeScreen(r: Route): ReactNode {
   switch (r.name) {
     case 'admin':
       return <AdminScreen />
+    case 'keys':
+      return <KeysScreen />
     default:
       return <Placeholder title="common.soon" />
   }

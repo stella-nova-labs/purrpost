@@ -46,7 +46,9 @@ export type User = {
   is_owner: boolean
   is_admin: boolean
 }
-export type Me = { user: User; fake_providers: boolean }
+export type Budget = { limit: number; spent: number; spent_own_keys: number; remaining: number; exhausted: boolean; month: string }
+export type Me = { user: User; fake_providers: boolean; budget?: Budget; own_keys?: { fal: boolean; anthropic: boolean } }
+export type Keys = { fal: string | null; anthropic: string | null }
 
 export type Invite = { code: string; max_uses: number; uses: number; note: string; active: boolean; created_ms: number; link: string | null }
 export type AdminUserRow = {
@@ -55,6 +57,9 @@ export type AdminUserRow = {
   username: string | null
   is_active: boolean
   budget_usd: number
+  spent_usd: number
+  spent_own_usd: number
+  own_keys: boolean
   invite_code: string | null
   created_ms: number
 }
@@ -68,3 +73,5 @@ export const adminDisableInvite = (code: string) => api<{ ok: boolean }>(`/api/a
 export const adminUsers = () => api<AdminUserRow[]>('/api/admin/users')
 export const adminPatchUser = (id: number, body: { budget_usd?: number; is_active?: boolean }) =>
   api<{ ok: boolean }>(`/api/admin/users/${id}`, { method: 'PATCH', body })
+export const getKeys = () => api<Keys>('/api/me/keys')
+export const putKeys = (body: { fal?: string; anthropic?: string }) => api<Keys>('/api/me/keys', { method: 'PUT', body })

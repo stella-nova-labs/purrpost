@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from ..models import InviteCode, User
+from ..services import budget
 from ..services.users import create_invite, list_invites
 from .deps import AdminUser, Session, SettingsDep
 
@@ -50,10 +51,13 @@ class UserPatch(BaseModel):
 
 
 @router.get("/users")
-async def users(_: AdminUser, s: Session) -> list[dict]:
+async def users(_: AdminUser, s: Session, settings: SettingsDep) -> list[dict]:
     rows = (await s.execute(select(User).order_by(User.created_ms))).scalars().all()
     return [{"id": u.id, "first_name": u.first_name, "username": u.username, "is_active": u.is_active,
-             "budget_usd": u.budget_usd, "invite_code": u.invite_code, "created_ms": u.created_ms} for u in rows]
+             "budget_usd": u.budget_usd, "invite_code": u.invite_code, "created_ms": u.created_ms,
+             "spent_usd": round(await budget.spent(s, u.id, settings), 2),
+             "spent_own_usd": round(await budget.spent(s, u.id, settings, "own"), 2),
+             "own_keys": bool(u.fal_key_enc or u.anthropic_key_enc)} for u in rows]
 
 
 @router.patch("/users/{uid}")

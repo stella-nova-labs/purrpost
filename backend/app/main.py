@@ -11,7 +11,9 @@ from fastapi.responses import FileResponse
 
 from . import jobs
 from .api.admin import router as admin_router
+from .api.keys import router as keys_router
 from .api.me import router as me_router
+from .api.media import router as media_router
 from .config import Settings, get_settings
 from .context import Ctx
 from .db import Database
@@ -22,12 +24,17 @@ log = logging.getLogger("purrpost")
 STATIC_CANDIDATES = [Path(__file__).resolve().parent.parent / "static",
                      Path(__file__).resolve().parents[2] / "frontend" / "dist"]
 
-ROUTERS = [me_router, admin_router]
+ROUTERS = [me_router, keys_router, admin_router, media_router]
 
 
 def build_ctx(settings: Settings, db: Database, bot=None) -> Ctx:
-    return Ctx(settings=settings, db=db, bot=bot,
-               notifier=BotNotifier(bot) if bot is not None else MemoryNotifier())
+    from .providers.fake import FakeImageGen, FakeLLM, FakeTrainer
+    from .providers.storage import make_storage
+    ctx = Ctx(settings=settings, db=db, bot=bot, storage=make_storage(settings),
+              notifier=BotNotifier(bot) if bot is not None else MemoryNotifier())
+    if settings.dev_fake_providers:
+        ctx.fakes = {"llm": FakeLLM(), "images": FakeImageGen(), "trainer": FakeTrainer()}
+    return ctx
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -51,7 +58,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if bot is not None:
             from .bot import create_dispatcher, setup_menu
             dp = create_dispatcher(ctx)
-            app.state.bot_username = (await bot.get_me()).username
+            app.state.bot_username = ctx.bot_username = (await bot.get_me()).username
             await setup_menu(bot, settings)
             if settings.bot_mode == "webhook":
                 app.state.dp = dp
@@ -73,6 +80,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         await t
             if bot:
                 await bot.session.close()
+            await ctx.http.aclose()
             await db.close()
 
     app = FastAPI(title="Purrpost", lifespan=lifespan, docs_url="/api/docs" if settings.dev_auth else None,

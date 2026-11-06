@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from ..services import budget
 from ..services.users import InviteError, redeem
 from .deps import AnyUser, Session, SettingsDep
 
@@ -15,8 +16,12 @@ def user_out(u, settings) -> dict:
 
 
 @router.get("/me")
-async def me(u: AnyUser, settings: SettingsDep) -> dict:
-    return {"user": user_out(u, settings), "fake_providers": settings.dev_fake_providers}
+async def me(u: AnyUser, s: Session, settings: SettingsDep) -> dict:
+    out = {"user": user_out(u, settings), "fake_providers": settings.dev_fake_providers}
+    if u.is_active:
+        out["budget"] = await budget.summary(s, u, settings)
+        out["own_keys"] = {"fal": bool(u.fal_key_enc), "anthropic": bool(u.anthropic_key_enc)}
+    return out
 
 
 class RedeemIn(BaseModel):
