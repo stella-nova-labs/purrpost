@@ -92,12 +92,12 @@ All settings are environment variables; [`.env.example`](.env.example) lists eve
 
 One Docker image serves both services: Node builds the Mini App, the Python image runs the API, the bot and the worker.
 
-1. **Project.** New project → Deploy from GitHub repo → `stella-nova-labs/purrpost`. Railway picks up the `Dockerfile` and `railway.json` (health check `/api/health`). This first service is **web**.
+1. **Project.** New project → Deploy from GitHub repo → `stella-nova-labs/purrpost`. Railway picks up the `Dockerfile` via `railway.json`. This first service is **web**; set its health check path to `/api/health` (Settings → Deploy). The health check is not in `railway.json` because the worker shares that file and has no HTTP server.
 2. **Postgres.** Add a PostgreSQL database. In web's variables: `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
 3. **Bucket.** Add a bucket. From its credentials copy the endpoint, bucket name, access key and secret into `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` (`S3_REGION=auto`). The bucket stays private: Purrpost gives Instagram and Threads presigned URLs that live an hour (`PRESIGN_TTL_SEC`), which is what they need to fetch the images.
 4. **Domain.** web → Settings → Networking → Generate domain. Put `https://<that domain>` into `WEBAPP_URL`.
 5. **Web variables.** Everything from the table above, plus `BOT_MODE=webhook`. Leave `RUN_WORKER` unset, and never set `DEV_AUTH` or `DEV_FAKE_PROVIDERS` in production. On start the container runs `alembic upgrade head`, then uvicorn; the bot registers its webhook at `<WEBAPP_URL>/bot/webhook`.
-6. **Worker.** Add a second service from the same repo, named **worker**. Settings → Deploy → custom start command `python -m app.worker`; turn off the health check for it. Give it the same variables (shared variables are handy) but **without** `BOT_MODE`: the worker only sends messages, the webhook stays with web. Every `WORKER_INTERVAL_SEC` (20 s) the worker plans drafts, runs generation, polls LoRA training, publishes, refreshes tokens and collects metrics.
+6. **Worker.** Add a second service from the same repo, named **worker**. Settings → Deploy → custom start command `python -m app.worker` (no health check). Give it the same variables (shared variables are handy) but **without** `BOT_MODE`: the worker only sends messages, the webhook stays with web. Every `WORKER_INTERVAL_SEC` (20 s) the worker plans drafts, runs generation, polls LoRA training, publishes, refreshes tokens and collects metrics.
 
 To scale, add worker replicas: jobs and publications are claimed atomically in the database, so two workers never run the same job.
 
