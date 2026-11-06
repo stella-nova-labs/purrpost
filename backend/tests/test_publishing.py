@@ -155,12 +155,18 @@ async def test_token_expired_is_clear(client, ctx):
     assert "токен истёк — переподключите Instagram" in ctx.notifier.last(OWNER).text
 
 
-async def test_no_accounts(client, ctx):
-    _, d = await approved_due(client, ctx, ())
+async def test_no_accounts_hands_post_to_user(client, ctx):
+    ch, d = await approved_due(client, ctx, ())
+    await run_jobs(ctx)
     await run_jobs(ctx)
     d2 = (await client.get(f"/api/drafts/{d['id']}", headers=auth(OWNER))).json()
-    assert d2["status"] == "failed" and d2["error"] == "no_accounts"
-    assert "нет подключённых соцсетей" in ctx.notifier.last(OWNER).text
+    assert d2["status"] == "published" and d2["publications"] == []
+    album, caption = [m for m in ctx.notifier.sent if m.chat_id == OWNER][-2:]
+    assert album.photos == 3 and "время публиковать" in album.text and "@don.whiskers" in album.text
+    assert caption.text.startswith("<pre>") and "🤖 AI character" in caption.text
+    assert sum("время публиковать" in m.text for m in ctx.notifier.sent) == 1  # once
+    c = (await client.get(f"/api/characters/{ch['id']}", headers=auth(OWNER))).json()
+    assert c["lore"] and c["lore"][-1]["summary"]  # counted as posted: the story goes on
 
 
 async def test_autopilot_post_can_be_deleted(client, ctx):

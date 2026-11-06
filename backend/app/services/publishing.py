@@ -36,6 +36,7 @@ ERROR_TEXTS = {
     "bot_not_admin": "бот не админ канала или не может публиковать",
     "bot_not_running": "бот не запущен",
     "no_accounts": "у персонажа нет подключённых соцсетей",
+    "delivery_failed": "бот не смог прислать готовый пост",
     "delete_not_supported": "{platform} не даёт удалить пост через API — удалите его вручную",
 }
 
@@ -74,9 +75,9 @@ async def start_due(ctx, now: int | None = None) -> int:
         for d in due:
             accs = await accounts_for(s, d.character_id)
             if not accs:
-                d.status, d.error = "failed", "no_accounts"
-                await s.commit()
-                await _notify_failed(ctx, d, [("", "no_accounts")])
+                # nothing connected (e.g. no Meta app): the bot hands the finished post to the user to post by hand
+                await deliver_manually(ctx, s, d)
+                n += 1
                 continue
             for a in accs:
                 try:
@@ -89,6 +90,25 @@ async def start_due(ctx, now: int | None = None) -> int:
             n += 1
         await s.commit()
     return n
+
+
+async def deliver_manually(ctx, s: AsyncSession, d: Draft) -> None:
+    ch = await s.get(Character, d.character_id)
+    try:
+        photos = [await ctx.storage.get(sl["key"]) for sl in d.slides]
+        await ctx.notifier.send_album(
+            d.user_id, photos,
+            f"📤 <b>{html.escape(ch.name)}</b>: время публиковать. Сохраните картинки по порядку и выложите их "
+            f"каруселью в Instagram @{html.escape(ch.handle)}. Подпись ниже — нажмите на неё, чтобы скопировать.")
+        await ctx.notifier.send(d.user_id, f"<pre>{html.escape(final_caption(d, ch))}</pre>")
+    except Exception:  # noqa: BLE001
+        log.exception("manual delivery of draft %s", d.id)
+        d.status, d.error = "failed", "delivery_failed"
+        await s.commit()
+        return
+    d.status, d.published_ms, d.error = "published", now_ms(), None
+    remember(ch, d)
+    await s.commit()
 
 
 # ---------- step 2: run publications ----------

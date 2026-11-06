@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import { errorText, t } from '../i18n'
-import { type Account, connectTelegram, disconnectAccount, errCode, listAccounts, oauthStart, type Platform } from '../lib/api'
+import { type Account, connectTelegram, disconnectAccount, errCode, getMe, listAccounts, oauthStart, type Platform } from '../lib/api'
 import { openExternal } from '../lib/telegram'
 import { Icon, type IconName } from './icons'
 import { Badge, Button, Card, ErrorNote, Input } from './ui'
@@ -42,6 +42,8 @@ function Row({ platform, acc, children }: { platform: Platform; acc?: Account; c
 
 function OAuthRow({ platform, cid, acc }: { platform: 'instagram' | 'threads'; cid: number; acc?: Account }) {
   const qc = useQueryClient()
+  const me = useQuery({ queryKey: ['me'], queryFn: getMe })
+  const available = me.data?.platforms[platform] ?? true
   const [opened, setOpened] = useState(false)
   const start = useMutation({
     mutationFn: () => oauthStart(platform, cid),
@@ -53,6 +55,12 @@ function OAuthRow({ platform, cid, acc }: { platform: 'instagram' | 'threads'; c
     },
   })
   const need = !acc || acc.status !== 'ok'
+  if (!available && !acc)
+    return (
+      <Row platform={platform}>
+        <p className="m-0 text-[12px] text-muted">{t('acc.manual')}</p>
+      </Row>
+    )
   return (
     <Row platform={platform} acc={acc}>
       {need && (

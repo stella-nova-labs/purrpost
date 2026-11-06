@@ -47,7 +47,7 @@ export type User = {
   is_admin: boolean
 }
 export type Budget = { limit: number; spent: number; spent_own_keys: number; remaining: number; exhausted: boolean; month: string }
-export type Me = { user: User; fake_providers: boolean; budget?: Budget; own_keys?: { fal: boolean; anthropic: boolean } }
+export type Me = { user: User; fake_providers: boolean; platforms: { instagram: boolean; threads: boolean }; budget?: Budget; own_keys?: { fal: boolean; anthropic: boolean } }
 export type Keys = { fal: string | null; anthropic: string | null }
 
 export type Invite = { code: string; max_uses: number; uses: number; note: string; active: boolean; created_ms: number; link: string | null }

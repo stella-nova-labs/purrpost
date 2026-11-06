@@ -17,7 +17,10 @@ def user_out(u, settings) -> dict:
 
 @router.get("/me")
 async def me(u: AnyUser, s: Session, settings: SettingsDep) -> dict:
-    out = {"user": user_out(u, settings), "fake_providers": settings.dev_fake_providers}
+    out = {"user": user_out(u, settings), "fake_providers": settings.dev_fake_providers,
+           # without a Meta app, Instagram/Threads can't be connected: posts are handed over by the bot instead
+           "platforms": {"instagram": bool(settings.meta_app_id) or settings.dev_fake_providers,
+                         "threads": bool(settings.threads_app_id) or settings.dev_fake_providers}}
     if u.is_active:
         out["budget"] = await budget.summary(s, u, settings)
         out["own_keys"] = {"fal": bool(u.fal_key_enc), "anthropic": bool(u.anthropic_key_enc)}

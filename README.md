@@ -109,6 +109,10 @@ To scale, add worker replicas: jobs and publications are claimed atomically in t
 
 To publish to a Telegram channel, add the bot to the channel as an administrator with "Post messages", then enter `@channel` (or the numeric id of a private channel) on the character page.
 
+## Without a Meta app: posting by hand
+
+The Meta app is optional. Without `META_APP_ID` the Instagram and Threads connect buttons are hidden, and a character with no connected accounts still works end to end: at the post's time the bot sends the finished carousel (images in order) and the caption in a tap-to-copy block, and you post it to Instagram yourself. The post then counts as published for the story log and the calendar (there are no metrics for it).
+
 ## The Meta app (Instagram API with Instagram Login)
 
 Instagram publishing needs a **professional** Instagram account (Business or Creator); switch it in Instagram: Settings → Account type and tools. With Instagram Login no Facebook Page is needed.
