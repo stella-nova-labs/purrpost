@@ -88,3 +88,100 @@ async def patch_settings(cid: int, body: SettingsIn, u: ActiveUser, s: Session, 
             setattr(ch, f, v)
     await s.commit()
     return await character_out(ctx, s, ch)
+
+
+# ---------- review actions ----------
+
+def _action_error(e) -> HTTPException:
+    return HTTPException(404 if e.code == "not_found" else 400, e.code)
+
+
+async def _act(ctx, s, u, did: int, fn) -> dict:
+    from ..services.approval import ActionError
+    d = await load_draft(s, u, did)
+    ch = await s.get(Character, d.character_id)
+    try:
+        await fn(d, ch)
+    except ActionError as e:
+        raise _action_error(e) from e
+    await s.commit()
+    return await svc.draft_out(ctx, s, d, ch)
+
+
+@router.post("/drafts/{did}/approve")
+async def approve(did: int, u: ActiveUser, s: Session, ctx: CtxDep) -> dict:
+    from ..services import approval
+    return await _act(ctx, s, u, did, lambda d, ch: approval.approve(ctx, s, d, ch))
+
+
+@router.post("/drafts/{did}/unschedule")
+async def unschedule(did: int, u: ActiveUser, s: Session, ctx: CtxDep) -> dict:
+    from ..services import approval
+    return await _act(ctx, s, u, did, lambda d, ch: approval.unschedule(s, d))
+
+
+@router.post("/drafts/{did}/skip")
+async def skip(did: int, u: ActiveUser, s: Session, ctx: CtxDep) -> dict:
+    from ..services import approval
+    return await _act(ctx, s, u, did, lambda d, ch: approval.skip(s, d, ch))
+
+
+class RegenIn(BaseModel):
+    what: str = Field("all", pattern="^(all|images)$")
+    slides: list[int] | None = None
+
+
+@router.post("/drafts/{did}/regenerate")
+async def regenerate(did: int, body: RegenIn, u: ActiveUser, s: Session, ctx: CtxDep) -> dict:
+    from ..services import approval
+    return await _act(ctx, s, u, did, lambda d, ch: approval.regenerate(ctx, s, d, ch, body.what == "images",
+                                                                          body.slides))
+
+
+class EditIn(BaseModel):
+    caption: str | None = Field(None, max_length=2200)
+    hashtags: list[str] | None = Field(None, max_length=30)
+    order: list[int] | None = Field(None, max_length=10)
+
+
+@router.patch("/drafts/{did}")
+async def edit(did: int, body: EditIn, u: ActiveUser, s: Session, ctx: CtxDep) -> dict:
+    from ..services import approval
+
+    async def fn(d, ch):
+        await approval.edit(d, body.caption, body.hashtags, body.order)
+    return await _act(ctx, s, u, did, fn)
+
+
+# ---------- calendar ----------
+
+@router.get("/calendar")
+async def calendar(u: ActiveUser, s: Session, ctx: CtxDep, from_ms: int, to_ms: int,
+                   character_id: int | None = None) -> dict:
+    """Drafts in the range plus schedule slots that don't have a draft yet ("planned")."""
+    from sqlalchemy import select
+
+    from ..services.schedule import slots
+    if to_ms - from_ms > 62 * 86_400_000:
+        raise HTTPException(400, "range_too_long")
+    rows = await svc.list_drafts(s, u.id, None, character_id, from_ms, to_ms)
+    q = select(Character).where(Character.user_id == u.id, Character.archived.is_(False),
+                                Character.status == "ready")
+    if character_id:
+        q = q.where(Character.id == character_id)
+    chars = {c.id: c for c in (await s.execute(q)).scalars()}
+    taken = {(d.character_id, d.slot_ms) for d in rows}
+    from ..services.users import now_ms
+    planned = [{"character": {"id": c.id, "name": c.name, "handle": c.handle}, "slot_ms": ms}
+               for c in chars.values() for ms in slots(c.schedule, max(from_ms, now_ms()), to_ms)
+               if (c.id, ms) not in taken]
+    items = []
+    for d in rows:
+        if d.status == "skipped":
+            continue
+        ch = chars.get(d.character_id) or await s.get(Character, d.character_id)
+        first = d.slides[0]["key"] if d.slides else None
+        items.append({"id": d.id, "character": {"id": ch.id, "name": ch.name, "handle": ch.handle},
+                      "slot_ms": d.slot_ms, "status": d.status, "rubric": d.rubric, "idea": d.idea,
+                      "thumb": ctx.storage.url(first) if first else None})
+    return {"drafts": items, "planned": sorted(planned, key=lambda x: x["slot_ms"])}

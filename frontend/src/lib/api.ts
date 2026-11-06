@@ -189,3 +189,22 @@ export const listDrafts = (params: { status?: string; character_id?: number; fro
 export const getDraft = (id: number) => api<Draft>(`/api/drafts/${id}`)
 export const generateNow = (id: number, trend?: string) => api<Draft>(`/api/characters/${id}/generate`, { body: { trend: trend || null } })
 export const patchSettings = (id: number, body: SettingsPatch) => api<Character>(`/api/characters/${id}/settings`, { method: 'PATCH', body })
+export const approveDraft = (id: number) => api<Draft>(`/api/drafts/${id}/approve`, { method: 'POST' })
+export const unscheduleDraft = (id: number) => api<Draft>(`/api/drafts/${id}/unschedule`, { method: 'POST' })
+export const skipDraft = (id: number) => api<Draft>(`/api/drafts/${id}/skip`, { method: 'POST' })
+export const regenerateDraft = (id: number, what: 'all' | 'images', slides?: number[]) =>
+  api<Draft>(`/api/drafts/${id}/regenerate`, { body: { what, slides } })
+export const editDraft = (id: number, body: { caption?: string; hashtags?: string[]; order?: number[] }) =>
+  api<Draft>(`/api/drafts/${id}`, { method: 'PATCH', body })
+
+export type CalendarItem = {
+  id: number
+  character: { id: number; name: string; handle: string }
+  slot_ms: number
+  status: DraftStatus
+  rubric: string
+  idea: string
+  thumb: string | null
+}
+export type CalendarData = { drafts: CalendarItem[]; planned: { character: { id: number; name: string; handle: string }; slot_ms: number }[] }
+export const getCalendar = (from_ms: number, to_ms: number) => api<CalendarData>(`/api/calendar?from_ms=${from_ms}&to_ms=${to_ms}`)
