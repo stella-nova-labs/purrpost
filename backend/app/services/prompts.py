@@ -107,3 +107,55 @@ def describe_content(img: bytes, appearance: dict) -> list[dict]:
 def lora_prompt(trigger: str, appearance_text: str, scene: str) -> str:
     return (f"{trigger}, {appearance_text}. {scene}. Photorealistic, cinematic light, 4:5 Instagram photo, "
             "no text, no watermark, no logos.")
+
+
+# ----- post plan -----
+
+PLAN_SYSTEM = f"""You are the writer behind an AI cat character's Instagram account. {DATA_RULE}
+{CONTENT_RULES}
+Write today's post in the character's voice, consistent with the bible and the story so far: continue running
+storylines, never repeat a recent idea. Respect the stop topics. Scenes are instructions for an image model:
+describe only what is visible (setting, pose, action, light, camera), the cat as "the cat", without its name,
+without text, letters or signs in the frame, without logos, brands, real people or weapons.
+Return one JSON object only:
+{{"idea": str (one line), "slides": [{{"scene": str}}] (1 to {{max_slides}} carousel slides telling the joke or
+story in order), "caption": str (in the caption language, emojis allowed, no hashtags inside),
+"hashtags": [str] (5-15, each starting with #), "alt_text": str (plain description of the images for screen
+readers, in English), "summary": str (one line for the story log)}}"""
+
+
+def plan_content(bible: dict, recent: list, rubric: dict | None, trend: str, max_slides: int) -> list[dict]:
+    parts = [
+        "Character bible:\n" + data_block("character_bible", bible),
+        "Story so far (most recent last):\n" + data_block("recent_posts", recent or "none yet"),
+        "Rubric of the day:\n" + data_block("rubric_of_the_day", rubric or "free topic"),
+    ]
+    if trend.strip():
+        parts.append("A trend the owner wants to use (optional, only if it fits the character):\n" +
+                     data_block("trend", trend))
+    parts.append(f"Write the post. Use between 1 and {max_slides} slides.")
+    return [text("\n\n".join(parts))]
+
+
+def plan_system(max_slides: int) -> str:
+    return PLAN_SYSTEM.replace("{max_slides}", str(max_slides))
+
+
+# ----- image QA -----
+
+QA_SYSTEM = f"""You check generated images for an AI cat character's Instagram before they are posted. {DATA_RULE}
+The first image is the character's reference, the second is the candidate. Check the candidate:
+- anatomy: exactly one cat unless the scene says otherwise; 4 legs, 2 eyes, 2 ears, 1 tail; no melted or extra
+  paws, no broken faces;
+- matches_reference: same fur color and pattern, markings, eye color and signature accessory as the reference;
+- text_artifacts: any garbled text, letters, signs, watermarks;
+- logos_or_known_characters: brand logos, trademarks, recognizable characters from games/films/cartoons, real people;
+- weapons: any weapon in the frame.
+Return JSON only: {{"anatomy_ok": bool, "matches_reference": bool, "text_artifacts": bool,
+"logos_or_known_characters": bool, "weapons": bool, "issues": [str] (short, in English), "score": number 0-1}}"""
+
+
+def qa_content(reference: bytes, candidate: bytes, scene: str, appearance_text: str) -> list[dict]:
+    return [image(reference), image(candidate),
+            text("Scene the candidate was drawn for:\n" + data_block("scene", scene) +
+                 "\nCharacter looks:\n" + data_block("appearance", appearance_text))]

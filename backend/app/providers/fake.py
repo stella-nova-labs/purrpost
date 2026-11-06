@@ -165,15 +165,15 @@ def _text_of(content: list[dict]) -> str:
     return "\n".join(b.get("text", "") for b in content if b.get("type") == "text")
 
 
-def _between(text: str, tag: str) -> str:
-    m = re.search(rf"<{tag}>(.*?)</{tag}>", text, re.S)
+def _block(text: str, name: str) -> str:
+    m = re.search(rf'<user_data name="{name}">\n(.*?)\n</user_data>', text, re.S)
     return m.group(1).strip() if m else ""
 
 
 def _canned(task: str, content: list[dict]) -> dict:
     text = _text_of(content)
     if task == "suggest_character":
-        idea = _between(text, "idea") or "a cat"
+        idea = _block(text, "idea") or "a cat"
         return {
             "refused": None,
             "name": "Captain Biscuit",
@@ -190,10 +190,15 @@ def _canned(task: str, content: list[dict]) -> dict:
             "stop_topics": ["politics", "real people"],
         }
     if task == "post_plan":
-        rubric = _between(text, "rubric_of_the_day") or "daily life"
+        raw = _block(text, "rubric_of_the_day")
+        try:
+            rubric = json.loads(raw).get("title", "daily life") if raw.startswith("{") else "daily life"
+        except ValueError:
+            rubric = "daily life"
+        trend = _block(text, "trend")
         n = 3
         return {
-            "idea": f"{rubric}: the cat negotiates a better spot on the sofa",
+            "idea": f"{rubric}: the cat negotiates a better spot on the sofa" + (f" ({trend})" if trend else ""),
             "slides": [{"scene": f"scene {i + 1}: the cat on a velvet sofa, warm lamp light, looking at camera"}
                        for i in range(n)],
             "caption": "Some deals are made with words. Mine are made with a slow blink.",
@@ -206,8 +211,7 @@ def _canned(task: str, content: list[dict]) -> dict:
                 "logos_or_known_characters": False, "issues": [], "score": 0.92}
     if task == "appearance_text":
         try:
-            a = json.loads(_between(text.replace("<user_data name=\"appearance_notes\">", "<notes>")
-                                    .replace("</user_data>", "</notes>"), "notes"))
+            a = json.loads(_block(text, "appearance_notes"))
         except ValueError:
             a = {}
         desc = ", ".join(v for v in (a.get("breed"), a.get("color"), a.get("marks"), a.get("signature")) if v)

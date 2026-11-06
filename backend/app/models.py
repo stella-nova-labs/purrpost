@@ -143,3 +143,43 @@ class Job(Base):
     error: Mapped[str | None] = mapped_column(Text)
     created_ms: Mapped[int] = mapped_column(BigInteger, default=0)
     finished_ms: Mapped[int | None] = mapped_column(BigInteger)
+
+
+class Draft(Base):
+    """One post: the plan from Claude, the images, the caption and its status.
+
+    generating -> pending_review | needs_review | scheduled -> publishing -> published
+    (or skipped / failed). One draft per (character, slot): the planner can run any number of times."""
+
+    __tablename__ = "drafts"
+    __table_args__ = (UniqueConstraint("character_id", "slot_ms", name="uq_draft_slot"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    character_id: Mapped[int] = mapped_column(ForeignKey("characters.id"), index=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    slot_ms: Mapped[int] = mapped_column(BigInteger, index=True)  # planned publish time
+    rubric: Mapped[str] = mapped_column(String(80), default="")
+    trend: Mapped[str] = mapped_column(Text, default="")
+    idea: Mapped[str] = mapped_column(Text, default="")
+    caption: Mapped[str] = mapped_column(Text, default="")
+    hashtags: Mapped[list] = mapped_column(JSON, default=list)
+    alt_text: Mapped[str] = mapped_column(Text, default="")
+    summary: Mapped[str] = mapped_column(Text, default="")
+    slides: Mapped[list] = mapped_column(JSON, default=list)  # [{scene, key, ok, qa, attempts}]
+    status: Mapped[str] = mapped_column(String(20), default="generating", index=True)
+    qa_ok: Mapped[bool] = mapped_column(Boolean, default=False)
+    error: Mapped[str | None] = mapped_column(Text)
+    caption_edited: Mapped[bool] = mapped_column(Boolean, default=False)
+    approved_ms: Mapped[int | None] = mapped_column(BigInteger)
+    published_ms: Mapped[int | None] = mapped_column(BigInteger)
+    created_ms: Mapped[int] = mapped_column(BigInteger, default=0)
+
+
+class BotMessage(Base):
+    __tablename__ = "bot_messages"
+    __table_args__ = (UniqueConstraint("chat_id", "message_id", name="uq_bot_message"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger)
+    message_id: Mapped[int] = mapped_column(BigInteger)
+    draft_id: Mapped[int] = mapped_column(Integer, index=True)

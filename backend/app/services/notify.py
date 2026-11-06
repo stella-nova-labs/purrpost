@@ -23,7 +23,7 @@ class Button:
 class Sent:
     chat_id: int
     text: str
-    photos: list[str] = field(default_factory=list)
+    photos: int = 0
     buttons: list[list[Button]] = field(default_factory=list)
     message_id: int = 0
 
@@ -31,8 +31,11 @@ class Sent:
 class Notifier(Protocol):
     async def send(self, chat_id: int, text: str, buttons: list[list[Button]] | None = None) -> int: ...
 
-    async def send_album(self, chat_id: int, photo_urls: list[str], text: str,
-                         buttons: list[list[Button]] | None = None) -> int: ...
+    async def send_album(self, chat_id: int, photos: list[bytes], text: str,
+                         buttons: list[list[Button]] | None = None) -> int:
+        """Photos (raw bytes, so nothing needs a public URL), then the text with buttons. Returns the id of the
+        text message: users reply to it to change the caption."""
+        ...
 
 
 class MemoryNotifier:
@@ -42,15 +45,15 @@ class MemoryNotifier:
 
     async def send(self, chat_id: int, text: str, buttons: list[list[Button]] | None = None) -> int:
         self._next += 1
-        self.sent.append(Sent(chat_id, text, [], buttons or [], self._next))
+        self.sent.append(Sent(chat_id, text, 0, buttons or [], self._next))
         log.info("bot -> %s: %s", chat_id, text.splitlines()[0] if text else "")
         return self._next
 
-    async def send_album(self, chat_id: int, photo_urls: list[str], text: str,
+    async def send_album(self, chat_id: int, photos: list[bytes], text: str,
                          buttons: list[list[Button]] | None = None) -> int:
         self._next += 1
-        self.sent.append(Sent(chat_id, text, list(photo_urls), buttons or [], self._next))
-        log.info("bot album -> %s (%d photos)", chat_id, len(photo_urls))
+        self.sent.append(Sent(chat_id, text, len(photos), buttons or [], self._next))
+        log.info("bot album -> %s (%d photos)", chat_id, len(photos))
         return self._next
 
     def last(self, chat_id: int | None = None) -> Sent | None:
@@ -79,15 +82,14 @@ class BotNotifier:
         m = await self.bot.send_message(chat_id, text, reply_markup=_markup(buttons))
         return m.message_id
 
-    async def send_album(self, chat_id: int, photo_urls: list[str], text: str,
+    async def send_album(self, chat_id: int, photos: list[bytes], text: str,
                          buttons: list[list[Button]] | None = None) -> int:
-        """Media groups can't carry buttons: the album goes first, then the caption with buttons.
-        Returns the id of the caption message (users reply to it to edit the caption)."""
-        from aiogram.types import InputMediaPhoto
-        if photo_urls:
-            if len(photo_urls) == 1:
-                await self.bot.send_photo(chat_id, photo_urls[0])
-            else:
-                await self.bot.send_media_group(chat_id, [InputMediaPhoto(media=u) for u in photo_urls[:10]])
-        m = await self.bot.send_message(chat_id, text, reply_markup=_markup(buttons))
+        """Media groups can't carry buttons: the album goes first, then the caption with buttons."""
+        from aiogram.types import BufferedInputFile, InputMediaPhoto
+        files = [BufferedInputFile(p, filename=f"{i + 1}.jpg") for i, p in enumerate(photos[:10])]
+        if len(files) == 1:
+            await self.bot.send_photo(chat_id, files[0])
+        elif files:
+            await self.bot.send_media_group(chat_id, [InputMediaPhoto(media=f) for f in files])
+        m = await self.bot.send_message(chat_id, text[:4096], reply_markup=_markup(buttons))
         return m.message_id

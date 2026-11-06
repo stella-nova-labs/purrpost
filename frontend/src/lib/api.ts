@@ -141,3 +141,51 @@ export const deleteImage = (id: number, imageId: number) => api<Character>(`/api
 export const startTraining = (id: number) => api<Character>(`/api/characters/${id}/train`, { method: 'POST' })
 export const confirmLora = (id: number, ok: boolean) => api<Character>(`/api/characters/${id}/confirm`, { body: { ok } })
 export const archiveCharacter = (id: number) => api<{ ok: boolean }>(`/api/characters/${id}`, { method: 'DELETE' })
+
+// ---- drafts ----
+export type DraftStatus =
+  | 'generating'
+  | 'pending_review'
+  | 'needs_review'
+  | 'scheduled'
+  | 'publishing'
+  | 'published'
+  | 'partially_published'
+  | 'failed'
+  | 'skipped'
+export type DraftSlide = { index: number; scene: string; url: string; ok: boolean; issues: string[] }
+export type Draft = {
+  id: number
+  character: { id: number; name: string; handle: string }
+  slot_ms: number
+  rubric: string
+  trend: string
+  idea: string
+  caption: string
+  hashtags: string[]
+  alt_text: string
+  status: DraftStatus
+  qa_ok: boolean
+  error: string | null
+  slides: DraftSlide[]
+  final_caption: string
+  busy: string[]
+  approved_ms: number | null
+  published_ms: number | null
+  created_ms: number
+}
+export type SettingsPatch = {
+  schedule?: Schedule
+  slides_max?: number
+  ai_disclosure?: boolean
+  disclosure_text?: string
+  trend?: string
+}
+
+export const listDrafts = (params: { status?: string; character_id?: number; from_ms?: number; to_ms?: number } = {}) => {
+  const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)]))
+  return api<Draft[]>(`/api/drafts?${q}`)
+}
+export const getDraft = (id: number) => api<Draft>(`/api/drafts/${id}`)
+export const generateNow = (id: number, trend?: string) => api<Draft>(`/api/characters/${id}/generate`, { body: { trend: trend || null } })
+export const patchSettings = (id: number, body: SettingsPatch) => api<Character>(`/api/characters/${id}/settings`, { method: 'PATCH', body })

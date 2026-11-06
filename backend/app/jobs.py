@@ -6,11 +6,12 @@ import asyncio
 import logging
 
 from .context import Ctx
-from .services import characters, queue
+from .services import characters, pipeline, queue, schedule  # noqa: F401 (pipeline registers handlers)
 
 log = logging.getLogger("purrpost.jobs")
 
 STEPS: list = [
+    ("planner", schedule.plan),
     ("queue", queue.process),
     ("trainings", characters.poll_trainings),
 ]

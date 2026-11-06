@@ -8,6 +8,7 @@ import { t } from './i18n'
 import { getMe } from './lib/api'
 import { initTelegram } from './lib/telegram'
 import { AdminScreen } from './screens/AdminScreen'
+import { CharacterScreen } from './screens/CharacterScreen'
 import { CharactersScreen } from './screens/CharactersScreen'
 import { InviteGate } from './screens/InviteGate'
 import { KeysScreen } from './screens/KeysScreen'
@@ -30,6 +31,8 @@ function routeScreen(r: Route): ReactNode {
       return <AdminScreen />
     case 'keys':
       return <KeysScreen />
+    case 'character':
+      return <CharacterScreen key={r.id} id={r.id} />
     case 'wizard':
       return <WizardScreen key={r.id ?? 'new'} id={r.id} />
     default:
