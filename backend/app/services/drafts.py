@@ -8,7 +8,7 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models import Character, Draft
+from ..models import Character, Draft, Publication
 from .notify import Button
 from .pipeline import final_caption
 from .queue import busy
@@ -35,7 +35,15 @@ async def draft_out(ctx, s: AsyncSession, d: Draft, ch: Character | None = None)
                     "issues": (sl.get("qa") or {}).get("issues", [])} for i, sl in enumerate(d.slides or [])],
         "final_caption": final_caption(d, ch), "busy": await busy(s, draft_id=d.id),
         "approved_ms": d.approved_ms, "published_ms": d.published_ms, "created_ms": d.created_ms,
+        "publications": [await _pub_out(p) for p in (await s.execute(
+            select(Publication).where(Publication.draft_id == d.id).order_by(Publication.id))).scalars()],
     }
+
+
+async def _pub_out(p: Publication) -> dict:
+    from .publishing import error_text
+    return {"platform": p.platform, "status": p.status, "permalink": p.permalink, "attempts": p.attempts,
+            "error": error_text(p.error_code, p.platform) if p.error_code and p.status != "published" else None}
 
 
 def approval_buttons(d: Draft) -> list[list[Button]]:

@@ -183,3 +183,50 @@ class BotMessage(Base):
     chat_id: Mapped[int] = mapped_column(BigInteger)
     message_id: Mapped[int] = mapped_column(BigInteger)
     draft_id: Mapped[int] = mapped_column(Integer, index=True)
+
+
+class Account(Base):
+    """A connected social account of a character. Tokens are Fernet-encrypted and never leave the server."""
+
+    __tablename__ = "accounts"
+    __table_args__ = (UniqueConstraint("character_id", "platform", name="uq_account_platform"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    character_id: Mapped[int] = mapped_column(ForeignKey("characters.id"), index=True)
+    platform: Mapped[str] = mapped_column(String(16))  # instagram | threads | telegram
+    external_id: Mapped[str] = mapped_column(String(64))
+    username: Mapped[str] = mapped_column(String(128), default="")
+    token_enc: Mapped[str | None] = mapped_column(Text)
+    token_expires_ms: Mapped[int | None] = mapped_column(BigInteger)
+    token_refreshed_ms: Mapped[int | None] = mapped_column(BigInteger)
+    status: Mapped[str] = mapped_column(String(12), default="ok")  # ok | expired | error
+    last_error: Mapped[str | None] = mapped_column(Text)
+    meta: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_ms: Mapped[int] = mapped_column(BigInteger, default=0)
+
+
+class Publication(Base):
+    """A draft on one platform. Unique per (draft, platform): a rerun of the worker can't post twice."""
+
+    __tablename__ = "publications"
+    __table_args__ = (UniqueConstraint("draft_id", "platform", name="uq_publication"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    draft_id: Mapped[int] = mapped_column(ForeignKey("drafts.id"), index=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"))
+    user_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    platform: Mapped[str] = mapped_column(String(16))
+    # pending -> publishing -> published | retry -> ... | failed; published -> deleted
+    status: Mapped[str] = mapped_column(String(12), default="pending", index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    next_attempt_ms: Mapped[int] = mapped_column(BigInteger, default=0)
+    claimed_ms: Mapped[int | None] = mapped_column(BigInteger)
+    error_code: Mapped[str | None] = mapped_column(String(48))
+    error_message: Mapped[str | None] = mapped_column(Text)
+    # Progress kept between attempts (created containers, the published media id) so a retry resumes
+    state: Mapped[dict] = mapped_column(JSON, default=dict)
+    external_id: Mapped[str | None] = mapped_column(String(64))
+    permalink: Mapped[str | None] = mapped_column(Text)
+    published_ms: Mapped[int | None] = mapped_column(BigInteger)
+    created_ms: Mapped[int] = mapped_column(BigInteger, default=0)

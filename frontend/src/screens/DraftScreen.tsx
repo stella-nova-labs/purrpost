@@ -19,7 +19,7 @@ import {
   unscheduleDraft,
 } from '../lib/api'
 import { slotText } from '../lib/format'
-import { confirmAction, haptic } from '../lib/telegram'
+import { confirmAction, haptic, openExternal } from '../lib/telegram'
 
 const EDITABLE = ['pending_review', 'needs_review', 'scheduled']
 const REVIEW = ['pending_review', 'needs_review']
@@ -101,6 +101,29 @@ export function DraftScreen({ id }: { id: number }) {
             <span key={s.index}>{t('draft.slideIssues', { n: s.index + 1, issues: s.issues.join('; ') })}</span>
           ))}
         </Card>
+      )}
+      {d.publications.length > 0 && (
+        <Section title={t('draft.where')}>
+          <Card className="flex flex-col divide-y divide-line">
+            {d.publications.map((p) => (
+              <div key={p.platform} className="flex items-center gap-3 px-4 py-3">
+                <Icon name={p.platform} />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="text-[14px] font-bold">{t(`acc.${p.platform}`)}</span>
+                  <span className={`text-[12px] ${p.error ? 'text-bad' : 'text-muted'}`}>
+                    {t(`pstatus.${p.status}` as 'pstatus.pending')}
+                    {p.error ? ` · ${p.error}` : ''}
+                  </span>
+                </div>
+                {p.permalink && (
+                  <Button small kind="secondary" icon="link" onClick={() => openExternal(p.permalink!)}>
+                    {t('draft.open')}
+                  </Button>
+                )}
+              </div>
+            ))}
+          </Card>
+        </Section>
       )}
       {act.isError && <ErrorNote text={errorText(errCode(act.error))} />}
       {REVIEW.includes(d.status) && (

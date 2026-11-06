@@ -173,6 +173,7 @@ export type Draft = {
   approved_ms: number | null
   published_ms: number | null
   created_ms: number
+  publications: { platform: Platform; status: string; permalink: string | null; attempts: number; error: string | null }[]
 }
 export type SettingsPatch = {
   schedule?: Schedule
@@ -208,3 +209,20 @@ export type CalendarItem = {
 }
 export type CalendarData = { drafts: CalendarItem[]; planned: { character: { id: number; name: string; handle: string }; slot_ms: number }[] }
 export const getCalendar = (from_ms: number, to_ms: number) => api<CalendarData>(`/api/calendar?from_ms=${from_ms}&to_ms=${to_ms}`)
+
+// ---- accounts ----
+export type Platform = 'instagram' | 'threads' | 'telegram'
+export type Account = {
+  id: number
+  platform: Platform
+  username: string
+  status: 'ok' | 'expired' | 'error'
+  last_error: string | null
+  token_expires_ms: number | null
+  title: string | null
+}
+export const listAccounts = (cid: number) => api<Account[]>(`/api/characters/${cid}/accounts`)
+export const oauthStart = (platform: 'instagram' | 'threads', cid: number) =>
+  api<{ url: string }>(`/api/oauth/${platform}/start?character_id=${cid}`)
+export const connectTelegram = (cid: number, channel: string) => api<Account>(`/api/characters/${cid}/accounts/telegram`, { body: { channel } })
+export const disconnectAccount = (id: number) => api<{ ok: boolean }>(`/api/accounts/${id}`, { method: 'DELETE' })

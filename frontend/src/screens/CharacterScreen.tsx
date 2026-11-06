@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
+import { AccountsCard } from '../components/AccountsCard'
 import { Icon } from '../components/icons'
 import { Button, Card, ErrorNote, Field, Input, ScreenTitle, Section, Spinner, Toggle } from '../components/ui'
 import { errorText, t } from '../i18n'
@@ -181,6 +182,9 @@ export function CharacterScreen({ id }: { id: number }) {
         </div>
       </Card>
       <GenerateCard ch={ch} />
+      <Section title={t('acc.title')}>
+        <AccountsCard cid={ch.id} />
+      </Section>
       <Section title={t('char.schedule')}>
         <ScheduleCard ch={ch} />
         <PostingCard ch={ch} />

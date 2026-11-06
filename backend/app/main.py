@@ -10,6 +10,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 
 from . import jobs
+from .api.accounts import router as accounts_router
 from .api.admin import router as admin_router
 from .api.characters import router as characters_router
 from .api.drafts import router as drafts_router
@@ -26,7 +27,7 @@ log = logging.getLogger("purrpost")
 STATIC_CANDIDATES = [Path(__file__).resolve().parent.parent / "static",
                      Path(__file__).resolve().parents[2] / "frontend" / "dist"]
 
-ROUTERS = [me_router, keys_router, characters_router, drafts_router, admin_router, media_router]
+ROUTERS = [me_router, keys_router, characters_router, drafts_router, accounts_router, admin_router, media_router]
 
 
 def build_ctx(settings: Settings, db: Database, bot=None) -> Ctx:
@@ -35,7 +36,15 @@ def build_ctx(settings: Settings, db: Database, bot=None) -> Ctx:
     ctx = Ctx(settings=settings, db=db, bot=bot, storage=make_storage(settings),
               notifier=BotNotifier(bot) if bot is not None else MemoryNotifier())
     if settings.dev_fake_providers:
+        from .publishers.fake import FakePublisher
         ctx.fakes = {"llm": FakeLLM(), "images": FakeImageGen(), "trainer": FakeTrainer()}
+        ctx.publishers = {p: FakePublisher(p) for p in ("instagram", "threads", "telegram")}
+    else:
+        from .publishers.instagram import InstagramPublisher
+        from .publishers.telegram import TelegramChannelPublisher
+        from .publishers.threads import ThreadsPublisher
+        ctx.publishers = {"instagram": InstagramPublisher(settings, ctx.http), "threads": ThreadsPublisher(ctx.http),
+                          "telegram": TelegramChannelPublisher(bot)}
     return ctx
 
 
